@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>APILayer API Checker</title>
+<style>
+  :root {
+    --bg: #07080b;
+    --card: rgba(20, 22, 28, 0.72);
+    --border: rgba(255, 255, 255, 0.09);
+    --text: #e9ecf1;
+    --muted: #8b93a3;
+    --accent: #4f8cff;
+    --ok: #22c55e;
+    --bad: #ef4444;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 28px 16px;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    top: -35%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 720px;
+    height: 720px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(79,140,255,0.20), transparent 65%);
+    filter: blur(20px);
+    pointer-events: none;
+  }
+
+  .card {
+    position: relative;
+    width: 100%;
+    max-width: 560px;
+    background: var(--card);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: rgba(79,140,255,0.12);
+    border: 1px solid rgba(79,140,255,0.28);
+    padding: 5px 11px;
+    border-radius: 999px;
+    margin-bottom: 14px;
+  }
+
+  h1 {
+    margin: 0 0 6px;
+    font-size: 26px;
+    letter-spacing: -0.02em;
+  }
+
+  .sub {
+    margin: 0 0 22px;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  label {
+    display: block;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 7px;
+  }
+
+  input, select {
+    width: 100%;
+    padding: 13px 14px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+  }
+
+  input:focus, select:focus {
+    border-color: rgba(79,140,255,0.65);
+    box-shadow: 0 0 0 3px rgba(79,140,255,0.15);
+  }
+
+  input::placeholder { color: #5b6273; }
+
+  select { appearance: none; cursor: pointer; }
+  select option { background: #14161c; }
+
+  .field { margin-bottom: 18px; }
+
+  .key-wrap { position: relative; }
+
+  .key-wrap input { padding-right: 52px; }
+
+  #toggleKey {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 6px 9px;
+    border-radius: 8px;
+    line-height: 1;
+  }
+
+  #toggleKey:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+
+  #checkBtn {
+    width: 100%;
+    margin-top: 6px;
+    padding: 15px;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #5c95ff, #3b74e0);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: 0 10px 26px rgba(79,140,255,0.28);
+    transition: transform .15s, opacity .2s;
+  }
+
+  #checkBtn:hover:not(:disabled) { transform: translateY(-1px); }
+  #checkBtn:disabled { opacity: .6; cursor: not-allowed; }
+
+  .result {
+    margin-top: 24px;
+    border-radius: 14px;
+    padding: 18px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.03);
+    animation: fade .3s ease;
+  }
+
+  @keyframes fade {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .result.hidden { display: none; }
+
+  .result.ok  { border-color: rgba(34,197,94,0.35);  box-shadow: 0 0 32px rgba(34,197,94,0.10); }
+  .result.bad { border-color: rgba(239,68,68,0.35);  box-shadow: 0 0 32px rgba(239,68,68,0.10); }
+
+  .head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+  }
+
+  .result.ok  .head { color: var(--ok); }
+  .result.bad .head { color: var(--bad); }
+
+  .icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .result.ok  .icon { background: rgba(34,197,94,0.15); }
+  .result.bad .icon { background: rgba(239,68,68,0.15); }
+
+  .status {
+    margin: 12px 0 0;
+    font-size: 14px;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .err {
+    margin: 10px 0 0;
+    font-size: 13px;
+    color: #fca5a5;
+    line-height: 1.5;
+  }
+
+  .json {
+    margin: 14px 0 0;
+    padding: 14px;
+    background: #0b0d12;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: #b9c4d6;
+    max-height: 260px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .note {
+    margin: 20px 0 0;
+    font-size: 11.5px;
+    color: #5b6273;
+    text-align: center;
+    line-height: 1.5;
+  }
+
+  @media (max-width: 480px) {
+    .card { padding: 22px 18px; border-radius: 16px; }
+    h1 { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+  <main class="card">
+    <span class="badge">APILayer</span>
+    <h1>API Checker</h1>
+    <p class="sub">Verify that your APILayer endpoint and API key work before you build.</p>
+
+    <form id="form">
+      <div class="field">
+        <label for="endpoint">API Endpoint</label>
+        <input id="endpoint" type="url" required autocomplete="off"
+               placeholder="https://api.apilayer.com/exchangerates_data/latest?base=USD" />
+      </div>
+
+      <div class="field">
+        <label for="apiKey">API Key</label>
+        <div class="key-wrap">
+          <input id="apiKey" type="password" required autocomplete="off"
+                 placeholder="Paste your APILayer key" />
+          <button type="button" id="toggleKey" aria-label="Show or hide API key">👁</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="method">HTTP Method</label>
+        <select id="method">
+          <option>GET</option>
+          <option>POST</option>
+          <option>PUT</option>
+          <option>PATCH</option>
+          <option>DELETE</option>
+        </select>
+      </div>
+
+      <button type="submit" id="checkBtn">Check API</button>
+    </form>
+
+    <section id="result" class="result hidden"></section>
+
+    <p class="note">Your key is sent only to this app's backend, which calls APILayer. It is never stored or logged.</p>
+  </main>
+
+<script>
+  const form      = document.getElementById('form');
+  const endpoint  = document.getElementById('endpoint');
+  const apiKey    = document.getElementById('apiKey');
+  const method    = document.getElementById('method');
+  const btn       = document.getElementById('checkBtn');
+  const resultEl  = document.getElementById('result');
+  const toggleBtn = document.getElementById('toggleKey');
+
+  // Show / hide the API key
+  toggleBtn.addEventListener('click', () => {
+    const showing = apiKey.type === 'text';
+    apiKey.type = showing ? 'password' : 'text';
+    toggleBtn.textContent = showing ? '👁' : '🙈';
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    // Loading state
+    btn.disabled = true;
+    btn.textContent = 'Checking…';
+    resultEl.classList.add('hidden');
+
+    try {
+      const res = await fetch('/api/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          endpoint: endpoint.value.trim(),
+          apiKey: apiKey.value.trim(),
+          method: method.value
+        })
+      });
+
+      render(await res.json());
+    } catch (err) {
+      render({
+        ok: false,
+        status: 0,
+        statusText: 'Network Error',
+        error: 'Could not reach the checker backend.'
+      });
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Check API';
+    }
+  });
+
+  function esc(str) {
+    return String(str).replace(/[&<>"']/g, c => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+  }
+
+  function render(r) {
+    const ok = !!r.ok;
+    const statusLine = r.status
+      ? `Status: ${r.status} ${r.statusText || ''}`.trim()
+      : `Status: ${r.statusText || 'No response'}`;
+
+    let body = '';
+    if (r.data !== undefined && r.data !== null && r.data !== '') {
+      const json = typeof r.data === 'string' ? r.data : JSON.stringify(r.data, null, 2);
+      body = `<pre class="json">${esc(json)}</pre>`;
+    }
+
+    const errorHtml = r.error ? `<p class="err">${esc(r.error)}</p>` : '';
+
+    resultEl.className = 'result ' + (ok ? 'ok' : 'bad');
+    resultEl.innerHTML = `
+      <div class="head">
+        <span class="icon">${ok ? '✓' : '✕'}</span>
+        <span>${ok ? 'API WORKING' : 'API FAILED'}</span>
+      </div>
+      <p class="status">${esc(statusLine)}</p>
+      ${errorHtml}
+      ${body}
+    `;
+  }
+</script>
+</body>
+</html>
